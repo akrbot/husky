@@ -62,7 +62,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:arg name="laser_ust10_rear_rpy"      default="$(optenv HUSKY_UST10_SECONDARY_RPY 0 0 3.14159)" />
 
   <!-- Velodyne LiDAR Primary and Secondary -->
-  <xacro:arg name="laser_3d_enabled"              default="$(optenv HUSKY_LASER_3D_ENABLED 1)" />
+  <xacro:arg name="laser_3d_enabled"              default="$(optenv HUSKY_LASER_3D_ENABLED 0)" />
   <xacro:arg name="laser_3d_topic"                default="$(optenv HUSKY_LASER_3D_TOPIC points)"/>
   <xacro:arg name="laser_3d_tower"                default="$(optenv HUSKY_LASER_3D_TOWER 1)"/>
   <xacro:arg name="laser_3d_prefix"               default="$(optenv HUSKY_LASER_3D_PREFIX )"/>
@@ -141,7 +141,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:arg name="cpr_urdf_extras" default="$(optenv CPR_URDF_EXTRAS empty.urdf)" />
 
   <!-- OutdoorNav -->
-  <xacro:arg name="outdoornav_enabled"       default="$(optenv OUTDOORNAV_ENABLED 0)" />
+  <xacro:arg name="outdoornav_enabled"       default="$(optenv OUTDOORNAV_ENABLED 1)" />
   <xacro:arg name="outdoornav_configuration" default="$(optenv OUTDOORNAV_CONFIGURATION standard)" />
 
   <!-- Included URDF/XACRO Files -->

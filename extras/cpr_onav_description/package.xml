@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>cpr_onav_description</name>
+  <version>0.1.13</version>
+  <description>Clearpath OutdoorNav URDF description</description>
+
+  <author email="jmastrangelo@clearpathrobotics.com">José Mastrangelo</author>
+  <maintainer email="jmastrangelo@clearpathrobotics.com">José Mastrangelo</maintainer>
+
+  <url type="bugtracker">https://github.com/clearpathrobotics/cpr_onav_description/issues</url>
+  <url type="repository">https://github.com/clearpathrobotics/cpr_onav_description/</url>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>axis_description</depend>
+  <depend>lms1xx</depend>
+  <depend>realsense2_description</depend>
+  <depend>velodyne_description</depend>
+
+  <exec_depend>urdf</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <export>
+  </export>
+</package>
