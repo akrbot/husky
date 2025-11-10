@@ -92,7 +92,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:arg name="realsense_enabled_new"             default="$(optenv HUSKY_REALSENSE_ENABLED 1)" />
   <xacro:arg name="realsense_mode_new"               default="$(optenv HUSKY_REALSENSE_MODEL d435)"/>
   <xacro:arg name="realsense_topic_new"               default="$(optenv HUSKY_REALSENSE_TOPIC realsense)" />
-  <xacro:arg name="realsense_prefix_new"              default="$(optenv HUSKY_REALSENSE_PREFIX camera)" />
+  <xacro:arg name="realsense_prefix_new"              default="$(optenv HUSKY_REALSENSE_PREFIX realsense_camera)" />
   <xacro:arg name="realsense_parent_new"              default="$(optenv HUSKY_REALSENSE_PARENT top_plate_link)" />
   <xacro:arg name="realsense_xyz_new"                 default="$(optenv HUSKY_REALSENSE_XYZ 0.35 0 0.01)" />
   <xacro:arg name="realsense_rpy_new"                 default="$(optenv HUSKY_REALSENSE_RPY 0 0 0)" />
@@ -110,7 +110,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 
   <!-- BlackflyS Camera Primary and Secondary -->
   <xacro:arg name="blackfly_enabled"                  default="$(optenv HUSKY_BLACKFLY 0)"/>
-  <xacro:arg name="blackfly_mount_enabled"            default="$(optenv HUSKY_BLACKFLY_MOUNT_ENABLED 1)"/>
+  <xacro:arg name="blackfly_mount_enabled"            default="$(optenv HUSKY_BLACKFLY_MOUNT_ENABLED 0)"/>
   <xacro:arg name="blackfly_mount_angle"              default="$(optenv HUSKY_BLACKFLY_MOUNT_ANGLE 0)"/>
   <xacro:arg name="blackfly_prefix"                   default="$(optenv HUSKY_BLACKFLY_PREFIX blackfly)"/>
   <xacro:arg name="blackfly_parent"                   default="$(optenv HUSKY_BLACKFLY_PARENT top_plate_link)"/>
@@ -118,7 +118,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:arg name="blackfly_rpy"                      default="$(optenv HUSKY_BLACKFLY_RPY 0 0 0)"/>
 
   <xacro:arg name="blackfly_secondary_enabled"        default="$(optenv HUSKY_BLACKFLY_SECONDARY 0)"/>
-  <xacro:arg name="blackfly_secondary_mount_enabled"  default="$(optenv HUSKY_BLACKFLY_SECONDARY_MOUNT_ENABLED 1)"/>
+  <xacro:arg name="blackfly_secondary_mount_enabled"  default="$(optenv HUSKY_BLACKFLY_SECONDARY_MOUNT_ENABLED 0)"/>
   <xacro:arg name="blackfly_secondary_mount_angle"    default="$(optenv HUSKY_BLACKFLY_SECONDARY_MOUNT_ANGLE 0)"/>
   <xacro:arg name="blackfly_secondary_prefix"         default="$(optenv HUSKY_BLACKFLY_SECONDARY_PREFIX blackfly_secondary)"/>
   <xacro:arg name="blackfly_secondary_parent"         default="$(optenv HUSKY_BLACKFLY_SECONDARY_PARENT top_plate_link)"/>
@@ -153,7 +153,6 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:include filename="$(find husky_description)/urdf/accessories/sensor_arch.urdf.xacro"/>
 
   <xacro:include filename="$(find husky_description)/urdf/accessories/vlp16_mount.urdf.xacro"/>
-  <!-- <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" /> -->
   <xacro:include filename="$(find husky_description)/urdf/decorations.urdf.xacro" />
   <xacro:include filename="$(find husky_description)/urdf/wheel.urdf.xacro" />
 
@@ -287,8 +286,9 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
       </xacro:hokuyo_ust10_mount>
   </xacro:if>
 
+  <!-- ################# THIS IS OLD VERSION IMPORT ############################################################################# -->
   <!-- Intel Realsense Primary and Secondary -->
-  <xacro:property name="realsense_enabled" value="$(arg realsense_enabled)"/>
+  <!-- <xacro:property name="realsense_enabled" value="$(arg realsense_enabled)"/>
   <xacro:property name="realsense_secondary_enabled" value="$(arg realsense_secondary_enabled)"/>
   <xacro:if value="${realsense_enabled or realsense_secondary_enabled}">
       <xacro:if value="${realsense_model == 'd435'}">
@@ -323,30 +323,24 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
                             include="0">
       <origin xyz="$(arg realsense_secondary_xyz)" rpy="$(arg realsense_secondary_rpy)"/>
     </xacro:realsense_sensor>
-  </xacro:if>
+  </xacro:if> -->
+  <!-- ######################################################################################################################### -->
 
   <!-- Intel Realsense New-->
   <xacro:if value="$(arg realsense_enabled_new)">
     <!-- Include the correct model based on realsense_mode_new -->
-    <xacro:include filename="$(find realsense2_description)/urdf/_$(arg realsense_mode_new).urdf.xacro" />
-
     <!-- Define the camera link -->
-    <link name="realsense_camera_link" />
-
-    <!-- Use the included sensor macro -->
-    <xacro:sensor_d435
-          name="$(arg realsense_prefix_new)"
-          topics_ns="$(arg realsense_topic_new)"
-          parent="realsense_camera_link"
-          publish_pointcloud="true">
-      <origin xyz="0 0 0" rpy="0 0 0" />
-    </xacro:sensor_d435>
+    <xacro:include filename="$(find realsense2_description)/urdf/_$(arg realsense_mode_new).urdf.xacro" />
+    <link name="$(arg realsense_prefix_new)_link" />
+    <xacro:sensor_d435 name="camera" topics_ns="camera" parent="$(arg realsense_prefix_new)_link" publish_pointcloud="true">
+        <origin xyz="0 0 0" rpy="0 0 0" />
+    </xacro:sensor_d435> 
 
     <!-- Mount joint (position and orientation come from args) -->
-    <joint name="${arg realsense_prefix_new}_mount" type="fixed">
+    <joint name="$(arg realsense_prefix_new)_mount" type="fixed">
         <origin xyz="$(arg realsense_xyz_new)" rpy="$(arg realsense_rpy_new)"/>
         <parent link="$(arg realsense_parent_new)"/>
-        <child link="realsense_camera_link"/>
+        <child link="$(arg realsense_prefix_new)_link"/>
     </joint>
   </xacro:if>
 
