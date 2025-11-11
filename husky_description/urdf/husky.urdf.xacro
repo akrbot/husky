@@ -62,12 +62,21 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:arg name="laser_ust10_rear_rpy"      default="$(optenv HUSKY_UST10_SECONDARY_RPY 0 0 3.14159)" />
 
   <!-- Velodyne LiDAR Primary and Secondary -->
-  <xacro:arg name="laser_3d_enabled"              default="$(optenv HUSKY_LASER_3D_ENABLED 0)" />
+  <!-- <xacro:arg name="laser_3d_enabled"              default="$(optenv HUSKY_LASER_3D_ENABLED 0)" />
   <xacro:arg name="laser_3d_topic"                default="$(optenv HUSKY_LASER_3D_TOPIC points)"/>
   <xacro:arg name="laser_3d_tower"                default="$(optenv HUSKY_LASER_3D_TOWER 1)"/>
   <xacro:arg name="laser_3d_prefix"               default="$(optenv HUSKY_LASER_3D_PREFIX )"/>
   <xacro:arg name="laser_3d_parent"               default="$(optenv HUSKY_LASER_3D_PARENT top_plate_link)"/>
   <xacro:arg name="laser_3d_xyz"                  default="$(optenv HUSKY_LASER_3D_XYZ 0 0 0)" />
+  <xacro:arg name="laser_3d_rpy"                  default="$(optenv HUSKY_LASER_3D_RPY 0 0 0)" /> -->
+
+  <!-- Velodyne LiDAR Primary and Secondary -->
+  <xacro:arg name="laser_3d_enabled"              default="$(optenv HUSKY_LASER_3D_ENABLED 1)" />
+  <xacro:arg name="laser_3d_topic"                default="$(optenv HUSKY_LASER_3D_TOPIC points)"/>
+  <xacro:arg name="laser_3d_tower"                default="$(optenv HUSKY_LASER_3D_TOWER 0)"/>
+  <xacro:arg name="laser_3d_prefix"               default="$(optenv HUSKY_LASER_3D_PREFIX )"/>
+  <xacro:arg name="laser_3d_parent"               default="$(optenv HUSKY_LASER_3D_PARENT backpack_link)"/>
+  <xacro:arg name="laser_3d_xyz"                  default="$(optenv HUSKY_LASER_3D_XYZ 0 0 0.26)" />
   <xacro:arg name="laser_3d_rpy"                  default="$(optenv HUSKY_LASER_3D_RPY 0 0 0)" />
 
   <xacro:arg name="laser_3d_secondary_enabled"    default="$(optenv HUSKY_LASER_3D_SECONDARY_ENABLED 0)" />
@@ -89,12 +98,22 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:property name="realsense_model"          value="$(arg realsense_model)"/>
 
   <!-- Realsense Camera New -->
-  <xacro:arg name="realsense_enabled_new"             default="$(optenv HUSKY_REALSENSE_ENABLED 0)" />
+  <!-- <xacro:arg name="realsense_enabled_new"             default="$(optenv HUSKY_REALSENSE_ENABLED 1)" />
   <xacro:arg name="realsense_mode_new"               default="$(optenv HUSKY_REALSENSE_MODEL d435)"/>
   <xacro:arg name="realsense_topic_new"               default="$(optenv HUSKY_REALSENSE_TOPIC realsense)" />
   <xacro:arg name="realsense_prefix_new"              default="$(optenv HUSKY_REALSENSE_PREFIX realsense_camera)" />
   <xacro:arg name="realsense_parent_new"              default="$(optenv HUSKY_REALSENSE_PARENT top_plate_link)" />
   <xacro:arg name="realsense_xyz_new"                 default="$(optenv HUSKY_REALSENSE_XYZ 0.35 0 0.01)" />
+  <xacro:arg name="realsense_rpy_new"                 default="$(optenv HUSKY_REALSENSE_RPY 0 0 0)" />
+  <xacro:property name="realsense_model"          value="$(arg realsense_model)"/> -->
+
+  <!-- Realsense Camera New -->
+  <xacro:arg name="realsense_enabled_new"             default="$(optenv HUSKY_REALSENSE_ENABLED 1)" />
+  <xacro:arg name="realsense_mode_new"               default="$(optenv HUSKY_REALSENSE_MODEL d435)"/>
+  <xacro:arg name="realsense_topic_new"               default="$(optenv HUSKY_REALSENSE_TOPIC realsense)" />
+  <xacro:arg name="realsense_prefix_new"              default="$(optenv HUSKY_REALSENSE_PREFIX realsense_camera)" />
+  <xacro:arg name="realsense_parent_new"              default="$(optenv HUSKY_REALSENSE_PARENT base_link)" />
+  <xacro:arg name="realsense_xyz_new"                 default="$(optenv HUSKY_REALSENSE_XYZ 0.38502 0.0 0.31605)" />
   <xacro:arg name="realsense_rpy_new"                 default="$(optenv HUSKY_REALSENSE_RPY 0 0 0)" />
   <xacro:property name="realsense_model"          value="$(arg realsense_model)"/>
 
@@ -151,12 +170,13 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <!-- <xacro:include filename="$(find husky_description)/urdf/accessories/flir_blackfly_mount.urdf.xacro"/> -->
 
   <!-- <xacro:include filename="$(find husky_description)/urdf/accessories/sensor_arch.urdf.xacro"/> -->
-  <!-- <xacro:include filename="$(find husky_description)/urdf/accessories/vlp16_mount.urdf.xacro"/> -->
+  <xacro:include filename="$(find husky_description)/urdf/accessories/vlp16_mount.urdf.xacro"/>
   <xacro:include filename="$(find husky_description)/urdf/decorations.urdf.xacro" />
 
   <xacro:include filename="$(find husky_description)/urdf/wheel.urdf.xacro" />
 
-  <xacro:include filename="$(find cpr_onav_description)/urdf/husky_observer.urdf.xacro" />
+  <xacro:include filename="$(find husky_description)/urdf/accessories/gnss_antenna.urdf.xacro" />
+  <xacro:include filename="$(find husky_description)/urdf/husky_observer.urdf.xacro" />
 
   <xacro:property name="M_PI" value="3.14159"/>
 
@@ -437,6 +457,20 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
       <drift>0.0001 0.0001 0.0001</drift>
     </plugin>
   </gazebo>
+
+  <xacro:gnss_antenna
+      parent="base_link"
+      name="gps_left"
+      gps_num="1">
+    <origin xyz="-0.25814 0.35027 0.92479" rpy="0 0 0" />
+  </xacro:gnss_antenna>
+
+  <xacro:gnss_antenna
+      parent="base_link"
+      name="gps_right"
+      gps_num="2">
+    <origin xyz="-0.25814 -0.35027 0.92479" rpy="0 0 0" />
+  </xacro:gnss_antenna>
 
   <!-- Optional custom includes. -->
   <xacro:include filename="$(arg urdf_extras)" />
