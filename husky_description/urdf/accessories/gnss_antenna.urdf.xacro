@@ -42,7 +42,7 @@
         <velocityTopicName>/sensors/gps_${gps_num}/vel</velocityTopicName>
         <referenceLatitude>$(optenv GAZEBO_WORLD_LAT 17.50969045486119)</referenceLatitude>  <!-- update ref lat/lon based on config files -->
         <referenceLongitude>$(optenv GAZEBO_WORLD_LON 78.27728104672221)</referenceLongitude> 
-        <referenceHeading>90</referenceHeading>
+        <referenceHeading>0</referenceHeading>   <!-- changed to 0 to avoid complication xaxis->north yaxis->west -->
         <referenceAltitude>0</referenceAltitude>
         <drift>0.0001 0.0001 0.0001</drift>
       </plugin>
