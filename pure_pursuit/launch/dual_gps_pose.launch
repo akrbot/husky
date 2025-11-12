@@ -1,0 +1,4 @@
+<launch>
+  <rosparam file="$(find pure_pursuit)/config/config.yaml" command="load" />
+  <node pkg="pure_pursuit" type="dualGPS_robot_pose_pub.py" name="dual_gps_pose_node" output="screen" />
+</launch>

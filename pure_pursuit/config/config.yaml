@@ -1,0 +1,9 @@
+gps:
+  ref_lat: 17.50969045486119
+  ref_lon: 78.27728104672221
+  topic_navsat_fix1: /sensors/gps_1/fix
+  topic_navsat_fix2: /sensors/gps_2/fix
+
+pose:
+  frame_id: odom
+  publish_topic: /robot_mid_pose
