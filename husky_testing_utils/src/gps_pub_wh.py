@@ -62,6 +62,14 @@ class GPS_Publisher:
 
 
     def compute_and_publish(self):
+
+        # Here left gps is considerd as front and right gps is considered as back
+        # the heading is computed from back to front
+        # that means the heading is computed here is actually right to left
+        # a robot facing north will have heading of 270 degrees because the antenna is on the left/right
+        # that means west(left)antenna and east(right)antenna: heading >> right to left >> east to west means 270 degrees
+        # therfore 270 deg offset
+        
         gps_front_data = self.gps_left
         gps_back_data = self.gps_right
 
