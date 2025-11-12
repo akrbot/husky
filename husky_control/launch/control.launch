@@ -2,7 +2,7 @@
 <launch>
 
   <!-- <arg name="multimaster" default="$(optenv ROBOT_MULTIMASTER false)"/> -->
-  <arg name="simulation" default="$(optenv ROBOT_SIMULATION false)"/>
+  <arg name="simulation" default="$(optenv ROBOT_SIMULATION true)"/>
   <arg name="robot_namespace" default="$(optenv ROBOT_NAMESPACE robot)"/>
   <arg name="enable_ekf" default="$(optenv ENABLE_EKF true)"/>
 
