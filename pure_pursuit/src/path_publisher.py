@@ -26,7 +26,7 @@ def generate_square_wave_path(start_x, start_y, path_length, row_height, num_row
     
     # Add the initial starting point
     start_pose = PoseStamped()
-    start_pose.header.frame_id = "odom"
+    start_pose.header.frame_id = "world"
     start_pose.pose.position.x = current_x
     start_pose.pose.position.y = current_y
     start_pose.pose.orientation = Quaternion(*quaternion_from_euler(0, 0, 0))
@@ -38,7 +38,7 @@ def generate_square_wave_path(start_x, start_y, path_length, row_height, num_row
         for j in np.arange(1.0, path_length + 1.0, 1.0):
             current_x = start_x + (horizontal_direction * j)
             pose = PoseStamped()
-            pose.header.frame_id = "odom"
+            pose.header.frame_id = "world"
             pose.pose.position.x = current_x
             pose.pose.position.y = current_y
             pose.pose.orientation = Quaternion(*quaternion_from_euler(0, 0, 0))
@@ -52,7 +52,7 @@ def generate_square_wave_path(start_x, start_y, path_length, row_height, num_row
             for k in np.arange(1.0, row_height + 1.0, 1.0):
                 current_y = start_y + k
                 pose = PoseStamped()
-                pose.header.frame_id = "odom"
+                pose.header.frame_id = "world"
                 pose.pose.position.x = current_x
                 pose.pose.position.y = current_y
                 pose.pose.orientation = Quaternion(*quaternion_from_euler(0, 0, 0))
@@ -79,7 +79,7 @@ def path_publisher_node():
     
     path_msg = Path()
     path_msg.header.stamp = rospy.Time.now()
-    path_msg.header.frame_id = "odom"
+    path_msg.header.frame_id = "world"
     path_msg.poses = waypoints
     
     rospy.loginfo("Publishing the generated path...")

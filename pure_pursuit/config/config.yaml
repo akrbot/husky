@@ -5,5 +5,5 @@ gps:
   topic_navsat_fix2: /sensors/gps_2/fix
 
 pose:
-  frame_id: odom
+  frame_id: world
   publish_topic: /robot_mid_pose
