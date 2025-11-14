@@ -22,6 +22,12 @@ If you don't already have a catkin workspace:
 mkdir -p ~/ros_ws/src
 cd ~/ros_ws/src
 ```
+## Clone the packages
+
+```bash
+cd ~/ros_ws/src
+git clone git@github.com:akrbot/husky.git
+```
 
 Build the workspace:
 
