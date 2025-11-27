@@ -30,6 +30,11 @@
         $(optenv HUSKY_WHEEL_MULTIPLIER 1.0)
   </rosparam>
 
+  <!-- Publish ground truth transform if EKF is disabled -->
+  <group unless="$(arg enable_ekf)">
+    <node pkg="husky_control" type="truth_tf_world_to_base_link_pub.py" name="truth_tf_world_to_base_link_pub" output="screen"/>
+  </group>
+
   <!-- Start EKF for localization -->
   <group if="$(arg enable_ekf)" >
     <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization">
@@ -37,9 +42,6 @@
     </node>
   </group>
 
-  <group unless="$(arg enable_ekf)">
-    <node pkg="husky_control" type="truth_tf_world_to_base_link_pub.py" name="truth_tf_world_to_base_link_pub" output="screen"/>
-  </group>
 
   <!-- Navsat transform -->
   <group if="$(arg enable_ekf)" >
