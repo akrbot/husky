@@ -26,6 +26,8 @@ class DualGPSPoseNode:
 
         # --- Setup publisher and subscribers ---
         self.pose_pub = rospy.Publisher(self.publish_topic, PoseStamped, queue_size=10)
+        self.mid_gps_pose_pub = rospy.Publisher("/rover_mid/fix", NavSatFix, queue_size=10)  
+
         rospy.Subscriber(self.topic_left, NavSatFix, self.left_cb)
         rospy.Subscriber(self.topic_right, NavSatFix, self.right_cb)
 
@@ -82,14 +84,30 @@ class DualGPSPoseNode:
 
         self.pose_pub.publish(pose_msg)
 
+    def publish_mid_gps_fix(self):
+        if self.left_gps is not None and self.right_gps is not None:
+            mid_lat = (self.left_gps.latitude + self.right_gps.latitude) / 2.0
+            mid_lon = (self.left_gps.longitude + self.right_gps.longitude) / 2.0
+
+            mid_fix = NavSatFix()
+            mid_fix.header.stamp = self.left_gps.header.stamp # Use one of the timestamps
+            mid_fix.header.frame_id = "base_link" # Use one of the frame_ids
+            mid_fix.latitude = mid_lat
+            mid_fix.longitude = mid_lon
+            mid_fix.altitude = 0
+
+            self.mid_gps_pose_pub.publish(mid_fix)
+
     # --- Callbacks ---
     def left_cb(self, msg):
         self.left_gps = msg
         self.publish_pose()
+        self.publish_mid_gps_fix()
 
     def right_cb(self, msg):
         self.right_gps = msg
         self.publish_pose()
+        self.publish_mid_gps_fix()
 
 
 if __name__ == "__main__":

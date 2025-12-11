@@ -69,7 +69,7 @@ def path_publisher_node():
     
     path_pub = rospy.Publisher('/pure_pursuit/path', Path, queue_size=1, latch=True)
     
-    start_x = rospy.get_param("~start_x", -1.0)
+    start_x = rospy.get_param("~start_x", 1.0)
     start_y = rospy.get_param("~start_y", 0.0)
     path_length = rospy.get_param("~path_length", 13.0)
     row_height = rospy.get_param("~row_height", 1.0)
