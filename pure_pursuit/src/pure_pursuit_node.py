@@ -23,7 +23,7 @@ class PurePursuitController:
         self.path_waypoints = []
 
         # ROS Publishers and Subscribers
-        self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+        self.cmd_vel_pub = rospy.Publisher('/husky/cmd_vel', Twist, queue_size=1)
         
         # Subscribe to Gazebo model states for ground truth pose
         # rospy.Subscriber('/gazebo/model_states', ModelStates, self.pose_callback_gazebo)

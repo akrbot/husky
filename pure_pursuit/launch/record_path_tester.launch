@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find pure_pursuit)/launch/hhgps_husky.launch"/>
+  <node pkg="x100_base_sim" type="sim_path_recorder.py" name="sim_path_recorder" output="screen"/>
+  <node pkg="x100_base_sim" type="sim_robot_gps_mqtt_publisher.py" name="sim_robot_gps_mqtt_publisher" output="screen"/>
+</launch>

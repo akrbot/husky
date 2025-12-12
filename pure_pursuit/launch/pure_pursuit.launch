@@ -1,5 +1,4 @@
 <launch>
-  <include file="$(find pure_pursuit)/launch/dual_gps_pose.launch" />
   <node pkg="pure_pursuit" type="path_publisher.py" name="path_publisher_node" output="screen" />
   <node pkg="pure_pursuit" type="pure_pursuit_node.py" name="pure_pursuit_node" output="screen" />
 </launch>
