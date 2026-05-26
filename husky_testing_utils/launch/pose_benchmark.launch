@@ -1,0 +1,35 @@
+<launch>
+  <!--
+    Pose Estimation Benchmark
+
+    Prerequisites: Start the simulation with EKF enabled FIRST:
+      ENABLE_EKF=true roslaunch husky_gazebo empty_world.launch
+
+    Then launch this file to start recording:
+      roslaunch husky_testing_utils pose_benchmark.launch
+
+    Drive the robot (teleop, pure pursuit, etc.), then Ctrl+C to save CSV.
+    Analyze with:
+      python3 $(rospack find husky_testing_utils)/src/pose_benchmark_analyzer.py
+  -->
+
+  <arg name="duration" default="0.0" />
+  <arg name="sample_rate" default="50.0" />
+  <arg name="robot_name" default="husky" />
+
+  <!-- IMU Dead Reckoning Node -->
+  <node pkg="husky_testing_utils" type="imu_dead_reckoning_node.py"
+        name="imu_dead_reckoning" output="screen">
+    <rosparam command="load" file="$(find husky_testing_utils)/config/benchmark.yaml"
+              subst_value="true" ns="imu_dead_reckoning" />
+  </node>
+
+  <!-- Benchmark Recorder Node -->
+  <node pkg="husky_testing_utils" type="pose_benchmark_recorder_node.py"
+        name="pose_benchmark_recorder" output="screen">
+    <param name="output_dir" value="$(find husky_testing_utils)/results/" />
+    <param name="duration" value="$(arg duration)" />
+    <param name="robot_name" value="$(arg robot_name)" />
+    <param name="sample_rate" value="$(arg sample_rate)" />
+  </node>
+</launch>

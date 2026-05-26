@@ -6,3 +6,4 @@ CATKIN_IGNORE
 *.pyc
 .vscode
 log
+husky_testing_utils/results/

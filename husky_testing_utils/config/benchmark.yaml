@@ -1,0 +1,10 @@
+benchmark:
+  duration: 0.0           # 0 = record until Ctrl+C
+  robot_name: "husky"
+  sample_rate: 50.0       # Hz
+
+imu_dead_reckoning:
+  gravity: 9.81
+  initial_x: 0.0
+  initial_y: 0.0
+  initial_yaw: 0.0
