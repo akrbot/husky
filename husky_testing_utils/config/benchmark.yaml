@@ -8,3 +8,29 @@ imu_dead_reckoning:
   initial_x: 0.0
   initial_y: 0.0
   initial_yaw: 0.0
+  turnon_bias_accel: 0.02   # m/s^2, std dev of random bias sampled at startup
+  turnon_bias_gyro: 0.01    # rad/s, std dev of random bias sampled at startup
+
+# ──────────────────────────────────────────────────────────────────────
+# IMU noise presets (env vars to set BEFORE launching the simulation)
+#
+# The Gazebo IMU plugin noise is configured via env vars in the URDF.
+# Set these before roslaunch — they affect the hector_gazebo_ros_imu plugin.
+# The turn-on bias values above are applied in the DR node (software-side).
+#
+# ┌──────────────┬─────────────┬─────────────┬────────────┬────────────┬───────────────┬───────────────┬──────────────┬─────────────┐
+# │ Preset       │ ACCEL_NOISE │ ACCEL_DRIFT │ RATE_NOISE │ RATE_DRIFT │ HEADING_DRIFT │ HEADING_NOISE │ turnon_accel │ turnon_gyro │
+# ├──────────────┼─────────────┼─────────────┼────────────┼────────────┼───────────────┼───────────────┼──────────────┼─────────────┤
+# │ ideal        │ 0.005       │ 0.005       │ 0.005      │ 0.005      │ 0.005         │ 0.005         │ 0.0          │ 0.0         │
+# │ mid (Xsens)  │ 0.02        │ 0.01        │ 0.005      │ 0.002      │ 0.005         │ 0.005         │ 0.01         │ 0.005       │
+# │ low (BNO055) │ 0.08        │ 0.04        │ 0.03       │ 0.015      │ 0.02          │ 0.02          │ 0.03         │ 0.015       │
+# └──────────────┴─────────────┴─────────────┴────────────┴────────────┴───────────────┴───────────────┴──────────────┴─────────────┘
+#
+# Example — low-cost IMU:
+#   HUSKY_IMU_ACCEL_NOISE=0.08 HUSKY_IMU_ACCEL_DRIFT=0.04 \
+#   HUSKY_IMU_RATE_NOISE=0.03 HUSKY_IMU_RATE_DRIFT=0.015 \
+#   HUSKY_IMU_HEADING_DRIFT=0.02 HUSKY_IMU_HEADING_NOISE=0.02 \
+#   ENABLE_EKF=true roslaunch husky_gazebo empty_world.launch
+#
+# Then in pose_benchmark.launch, set turnon_bias_accel=0.03, turnon_bias_gyro=0.015
+# ──────────────────────────────────────────────────────────────────────

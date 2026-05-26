@@ -29,6 +29,14 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:arg name="imu_rpy"     default="$(optenv HUSKY_IMU_RPY 0 -1.5708 3.1416)"/>
   <xacro:arg name="imu_parent"  default="$(optenv HUSKY_IMU_PARENT base_link)"/>
 
+  <!-- IMU noise parameters (configurable via env vars for benchmarking) -->
+  <xacro:arg name="imu_accel_drift"     default="$(optenv HUSKY_IMU_ACCEL_DRIFT 0.005)"/>
+  <xacro:arg name="imu_accel_noise"     default="$(optenv HUSKY_IMU_ACCEL_NOISE 0.005)"/>
+  <xacro:arg name="imu_rate_drift"      default="$(optenv HUSKY_IMU_RATE_DRIFT 0.005)"/>
+  <xacro:arg name="imu_rate_noise"      default="$(optenv HUSKY_IMU_RATE_NOISE 0.005)"/>
+  <xacro:arg name="imu_heading_drift"   default="$(optenv HUSKY_IMU_HEADING_DRIFT 0.005)"/>
+  <xacro:arg name="imu_heading_noise"   default="$(optenv HUSKY_IMU_HEADING_NOISE 0.005)"/>
+
   <!-- LMS1XX Laser Primary and Secondary -->
   <xacro:arg name="laser_enabled"           default="$(optenv HUSKY_LMS1XX_ENABLED 0)" />
   <xacro:arg name="laser_topic"             default="$(optenv HUSKY_LMS1XX_TOPIC front/scan)"/>
@@ -433,12 +441,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
       <updateRate>50.0</updateRate>
       <bodyName>base_link</bodyName>
       <topicName>imu/data</topicName>
-      <accelDrift>0.005 0.005 0.005</accelDrift>
-      <accelGaussianNoise>0.005 0.005 0.005</accelGaussianNoise>
-      <rateDrift>0.005 0.005 0.005 </rateDrift>
-      <rateGaussianNoise>0.005 0.005 0.005 </rateGaussianNoise>
-      <headingDrift>0.005</headingDrift>
-      <headingGaussianNoise>0.005</headingGaussianNoise>
+      <accelDrift>$(arg imu_accel_drift) $(arg imu_accel_drift) $(arg imu_accel_drift)</accelDrift>
+      <accelGaussianNoise>$(arg imu_accel_noise) $(arg imu_accel_noise) $(arg imu_accel_noise)</accelGaussianNoise>
+      <rateDrift>$(arg imu_rate_drift) $(arg imu_rate_drift) $(arg imu_rate_drift)</rateDrift>
+      <rateGaussianNoise>$(arg imu_rate_noise) $(arg imu_rate_noise) $(arg imu_rate_noise)</rateGaussianNoise>
+      <headingDrift>$(arg imu_heading_drift)</headingDrift>
+      <headingGaussianNoise>$(arg imu_heading_noise)</headingGaussianNoise>
     </plugin>
   </gazebo>
 

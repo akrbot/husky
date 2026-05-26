@@ -18,17 +18,28 @@ class IMUDeadReckoning:
         self.initial_yaw = rospy.get_param('~initial_yaw', 0.0)
         self.position_clamp = 1000.0
 
+        turnon_bias_accel = rospy.get_param('~turnon_bias_accel', 0.0)
+        turnon_bias_gyro = rospy.get_param('~turnon_bias_gyro', 0.0)
+
+        self.accel_bias = np.random.normal(0, turnon_bias_accel, 3) if turnon_bias_accel > 0 else np.zeros(3)
+        self.gyro_bias = np.random.normal(0, turnon_bias_gyro, 3) if turnon_bias_gyro > 0 else np.zeros(3)
+
         self.x = self.initial_x
         self.y = self.initial_y
         self.vx = 0.0
         self.vy = 0.0
         self.yaw = self.initial_yaw
+        self.yaw_bias_accumulated = 0.0
         self.prev_time = None
 
         self.odom_pub = rospy.Publisher('/imu_only/odom', Odometry, queue_size=10)
         rospy.Subscriber('/imu/data', Imu, self.imu_callback)
 
         rospy.loginfo("IMU dead reckoning node started (gravity=%.3f)", self.gravity)
+        rospy.loginfo("Turn-on bias accel: [%.5f, %.5f, %.5f] m/s^2",
+                      self.accel_bias[0], self.accel_bias[1], self.accel_bias[2])
+        rospy.loginfo("Turn-on bias gyro:  [%.5f, %.5f, %.5f] rad/s",
+                      self.gyro_bias[0], self.gyro_bias[1], self.gyro_bias[2])
 
     def imu_callback(self, msg):
         current_time = msg.header.stamp
@@ -45,7 +56,9 @@ class IMUDeadReckoning:
         self.prev_time = current_time
 
         q = msg.orientation
-        (_, _, self.yaw) = euler_from_quaternion([q.x, q.y, q.z, q.w])
+        (_, _, yaw_raw) = euler_from_quaternion([q.x, q.y, q.z, q.w])
+        self.yaw_bias_accumulated += self.gyro_bias[2] * dt
+        self.yaw = yaw_raw + self.yaw_bias_accumulated
 
         R = quaternion_matrix([q.x, q.y, q.z, q.w])[:3, :3]
         a_body = np.array([
@@ -53,6 +66,7 @@ class IMUDeadReckoning:
             msg.linear_acceleration.y,
             msg.linear_acceleration.z
         ])
+        a_body -= self.accel_bias
         a_world = R @ a_body
         a_world[2] -= self.gravity
 
