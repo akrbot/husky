@@ -24,7 +24,7 @@ husky/
 ├── husky_msgs/              Custom ROS messages (HuskyStatus)
 ├── husky_navigation/        ROS navigation stack configs (move_base, amcl, gmapping)
 ├── husky_viz/               Pre-configured RViz visualization files
-├── husky_testing_utils/     GPS publisher utility for testing
+├── husky_testing_utils/     Pose estimation benchmarking tools & GPS utilities
 ├── pure_pursuit/            Pure pursuit path-following controller (our algorithm)
 ├── demo/                    Demo assets
 ├── extras/                  Third-party dependencies bundled in-tree
@@ -283,9 +283,79 @@ pose:
 
 ### husky_testing_utils
 
-**What it does:** Contains `gps_pub_wh.py` — a GPS publisher node that computes heading and midpoint from two GPS antennas using geodesic calculations (geographiclib).
+**What it does:** Provides a pose estimation benchmarking framework that compares multiple localization methods (wheel odometry, IMU dead reckoning, EKF) against Gazebo ground truth. Also contains a WGS84 geodesic GPS publisher.
 
-Similar to `dualGPS_robot_pose_pub.py` in pure_pursuit but uses geodesic math (WGS84 ellipsoid) instead of flat-earth approximation. Publishes `/rover_mid/fix` and `/heading`.
+**Benchmarking pipeline:**
+```
+┌──────────────┐   ┌──────────────────────┐   ┌────────────────────────┐
+│ IMU Dead     │   │ Pose Benchmark       │   │ Pose Benchmark         │
+│ Reckoning    │──►│ Recorder             │──►│ Analyzer               │
+│ Node         │   │                      │   │                        │
+│              │   │ Collects from:       │   │ Generates:             │
+│ /imu/data    │   │  - Ground truth      │   │  - Position RMSE       │
+│     ↓        │   │  - Wheel odometry    │   │  - Heading RMSE        │
+│ /imu_only/   │   │  - IMU dead reckoning│   │  - Drift rate          │
+│   odom       │   │  - EKF fused         │   │  - Trajectory plots    │
+└──────────────┘   └──────────────────────┘   └────────────────────────┘
+```
+
+**Nodes:**
+
+1. **imu_dead_reckoning_node.py** — IMU-only pose estimation
+   - Subscribes to `/imu/data` (50 Hz) and integrates acceleration/angular velocity to estimate pose
+   - Applies configurable turn-on bias modeling (random bias sampled at startup) for accelerometer and gyroscope
+   - Transforms body-frame accelerations to world-frame using quaternion rotation, compensates gravity
+   - Publishes: `/imu_only/odom` (Odometry)
+
+2. **pose_benchmark_recorder_node.py** — Multi-source data collection
+   - Simultaneously records ground truth, wheel odometry, IMU dead reckoning, and EKF estimates
+   - Outputs timestamped CSV with 13 columns: `timestamp, gt_x, gt_y, gt_yaw, odom_x, odom_y, odom_yaw, imu_x, imu_y, imu_yaw, ekf_x, ekf_y, ekf_yaw`
+   - Configurable sample rate (default 50 Hz) and duration (default: until Ctrl+C)
+   - Results saved to `results/benchmark_YYYYMMDD_HHMMSS.csv`
+
+3. **pose_benchmark_analyzer.py** — Offline analysis and visualization
+   - Computes per-method metrics: position RMSE, heading RMSE, max errors, drift rate (m/m)
+   - Generates plots: `trajectory_comparison.png`, `position_error.png`, `heading_error.png`, `rmse_summary.png`
+   - Usage: `python3 pose_benchmark_analyzer.py [--input <csv>] [--output <dir>]`
+   - Auto-detects latest CSV in `results/` if no input specified
+
+4. **gps_pub_wh.py** — WGS84 geodesic dual-GPS publisher
+   - Similar to `dualGPS_robot_pose_pub.py` in pure_pursuit but uses geodesic math (WGS84 ellipsoid) instead of flat-earth approximation
+   - Publishes: `/rover_mid/fix` (NavSatFix), `/heading` (Float64)
+
+**IMU noise presets (environment variables set before launching simulation):**
+
+| Preset | ACCEL_NOISE | ACCEL_DRIFT | RATE_NOISE | RATE_DRIFT | HEADING_DRIFT | HEADING_NOISE | turnon_accel | turnon_gyro |
+|--------|-------------|-------------|------------|------------|---------------|---------------|--------------|-------------|
+| ideal | 0.005 | 0.005 | 0.005 | 0.005 | 0.005 | 0.005 | 0.0 | 0.0 |
+| mid (Xsens) | 0.02 | 0.01 | 0.005 | 0.002 | 0.005 | 0.005 | 0.01 | 0.005 |
+| low (BNO055) | 0.08 | 0.04 | 0.03 | 0.015 | 0.02 | 0.02 | 0.03 | 0.015 |
+
+The Gazebo IMU plugin noise is configured via `HUSKY_IMU_*` environment variables in the URDF (set before `roslaunch`). The turn-on bias values are applied in the dead reckoning node via `config/benchmark.yaml`.
+
+**Configuration (config/benchmark.yaml):**
+```yaml
+benchmark:
+  duration: 0.0           # 0 = record until Ctrl+C
+  robot_name: "husky"
+  sample_rate: 50.0       # Hz
+imu_dead_reckoning:
+  gravity: 9.81
+  initial_x: 0.0
+  initial_y: 0.0
+  initial_yaw: 0.0
+  turnon_bias_accel: 0.02   # m/s^2, std dev of random bias
+  turnon_bias_gyro: 0.01    # rad/s, std dev of random bias
+```
+
+**Key files:**
+- `src/imu_dead_reckoning_node.py` — IMU-only dead reckoning estimator
+- `src/pose_benchmark_recorder_node.py` — Multi-source pose data recorder
+- `src/pose_benchmark_analyzer.py` — Offline analysis and plot generation
+- `src/gps_pub_wh.py` — WGS84 geodesic GPS publisher
+- `config/benchmark.yaml` — Benchmark parameters and IMU bias config
+- `launch/pose_benchmark.launch` — Launches dead reckoning + recorder
+- `results/` — Output directory for CSV data and analysis plots
 
 ---
 
@@ -363,7 +433,39 @@ roslaunch pure_pursuit dual_gps_pose.launch
 roslaunch pure_pursuit pure_pursuit.launch
 ```
 
-### 6. Visualize in RViz (optional)
+### 6. Run Pose Estimation Benchmark
+
+```bash
+# Terminal 1: Start Gazebo with EKF enabled
+ENABLE_EKF=true roslaunch husky_gazebo empty_world.launch
+
+# Terminal 2: Start benchmarking (IMU dead reckoning + recorder)
+roslaunch husky_testing_utils pose_benchmark.launch
+
+# Terminal 3: Drive the robot (teleop, pure pursuit, or any other method)
+roslaunch husky_control teleop.launch
+```
+
+Drive the robot around, then press Ctrl+C in Terminal 2 to stop recording. Analyze the results:
+
+```bash
+python3 $(rospack find husky_testing_utils)/src/pose_benchmark_analyzer.py
+```
+
+**With a specific IMU noise preset (e.g. low-cost BNO055):**
+
+```bash
+# Terminal 1: Launch with low-cost IMU noise
+HUSKY_IMU_ACCEL_NOISE=0.08 HUSKY_IMU_ACCEL_DRIFT=0.04 \
+HUSKY_IMU_RATE_NOISE=0.03 HUSKY_IMU_RATE_DRIFT=0.015 \
+HUSKY_IMU_HEADING_DRIFT=0.02 HUSKY_IMU_HEADING_NOISE=0.02 \
+ENABLE_EKF=true roslaunch husky_gazebo empty_world.launch
+
+# Terminal 2: Launch benchmark (update turnon_bias in benchmark.yaml to match preset)
+roslaunch husky_testing_utils pose_benchmark.launch
+```
+
+### 7. Visualize in RViz (optional)
 
 ```bash
 rviz -d $(rospack find pure_pursuit)/rviz/pure_pursuit.rviz
@@ -396,6 +498,13 @@ rviz -d $(rospack find pure_pursuit)/rviz/pure_pursuit.rviz
 | `/pure_pursuit/path` | Path | path_publisher | Waypoint path to follow |
 | `/husky/cmd_vel` | Twist | pure_pursuit_node | Velocity commands (into twist_mux) |
 | `/lookahead_arrow` | Marker | pure_pursuit_node | RViz visualization of lookahead |
+
+### Benchmarking pipeline
+
+| Topic | Type | Source | Description |
+|-------|------|--------|-------------|
+| `/imu_only/odom` | Odometry | imu_dead_reckoning_node | IMU-only dead reckoning pose estimate |
+| `/odometry/filtered` | Odometry | robot_localization (EKF) | Fused wheel odom + IMU estimate |
 
 ### Control (twist_mux inputs -> output)
 
