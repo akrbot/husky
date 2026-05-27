@@ -36,10 +36,17 @@
     <node pkg="husky_control" type="truth_tf_world_to_base_link_pub.py" name="truth_tf_world_to_base_link_pub" output="screen"/>
   </group>
 
-  <!-- Start EKF for localization -->
+  <!-- Dual EKF for localization -->
   <group if="$(arg enable_ekf)" >
-    <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization">
-      <rosparam command="load" file="$(find husky_control)/config/localization.yaml" />
+    <!-- Local EKF: odom frame, fuses wheel odometry + IMU -->
+    <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization_local">
+      <rosparam command="load" file="$(find husky_control)/config/localization_local.yaml" />
+    </node>
+
+    <!-- Global EKF: map frame, fuses wheel odometry + IMU + GPS (via navsat_transform) -->
+    <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization_global">
+      <rosparam command="load" file="$(find husky_control)/config/localization_global.yaml" />
+      <remap from="odometry/filtered" to="odometry/filtered_map"/>
     </node>
   </group>
 
