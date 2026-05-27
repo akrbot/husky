@@ -29,6 +29,7 @@ class PoseBenchmarkRecorder:
         self.latest_odom = None
         self.latest_imu = None
         self.latest_ekf = None
+        self.latest_ekf_global = None
 
         self.data_rows = []
         self.start_time = None
@@ -37,6 +38,7 @@ class PoseBenchmarkRecorder:
         rospy.Subscriber('/husky_velocity_controller/odom', Odometry, self.odom_callback)
         rospy.Subscriber('/imu_only/odom', Odometry, self.imu_callback)
         rospy.Subscriber('/odometry/filtered', Odometry, self.ekf_callback)
+        rospy.Subscriber('/odometry/filtered_map', Odometry, self.ekf_global_callback)
 
         self.timer = rospy.Timer(rospy.Duration(1.0 / self.sample_rate), self.sample_callback)
 
@@ -62,6 +64,9 @@ class PoseBenchmarkRecorder:
     def ekf_callback(self, msg):
         self.latest_ekf = msg.pose.pose
 
+    def ekf_global_callback(self, msg):
+        self.latest_ekf_global = msg.pose.pose
+
     def extract_xyyaw(self, pose):
         if pose is None:
             return (float('nan'), float('nan'), float('nan'))
@@ -78,8 +83,9 @@ class PoseBenchmarkRecorder:
         odom = self.extract_xyyaw(self.latest_odom)
         imu = self.extract_xyyaw(self.latest_imu)
         ekf = self.extract_xyyaw(self.latest_ekf)
+        ekf_global = self.extract_xyyaw(self.latest_ekf_global)
 
-        self.data_rows.append([t] + list(gt) + list(odom) + list(imu) + list(ekf))
+        self.data_rows.append([t] + list(gt) + list(odom) + list(imu) + list(ekf) + list(ekf_global))
 
     def duration_callback(self, event):
         rospy.loginfo("Benchmark duration (%.1f s) reached, shutting down.", self.duration)
@@ -98,7 +104,8 @@ class PoseBenchmarkRecorder:
             'gt_x', 'gt_y', 'gt_yaw',
             'odom_x', 'odom_y', 'odom_yaw',
             'imu_x', 'imu_y', 'imu_yaw',
-            'ekf_x', 'ekf_y', 'ekf_yaw'
+            'ekf_x', 'ekf_y', 'ekf_yaw',
+            'ekf_global_x', 'ekf_global_y', 'ekf_global_yaw'
         ]
 
         with open(filename, 'w', newline='') as f:

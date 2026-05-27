@@ -51,14 +51,12 @@
   </group>
 
 
-  <!-- Navsat transform -->
+  <!-- GPS lat/lon to local x,y converter (no dependency on odometry/IMU) -->
   <group if="$(arg enable_ekf)" >
-    <node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform" output="screen">
-      <rosparam file="$(find husky_control)/config/navsat_transform.yaml" command="load"/>
-      <remap from="/gps/fix" to="/navsat/fix"/>
-      <remap from="/gps/vel" to="/navsat/vel"/>
+    <node pkg="husky_control" type="gps_to_odom_node.py" name="gps_to_odom" output="screen">
+      <param name="ref_lat" value="17.50969045486119"/>
+      <param name="ref_lon" value="78.27728104672221"/>
     </node>
-    <node pkg="tf" type="static_transform_publisher" name="utm_to_world" args="0 0 0 0 0 0 utm world 100" />
   </group>
 
   <node pkg="interactive_marker_twist_server" type="marker_server" name="twist_marker_server" output="screen">

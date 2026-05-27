@@ -453,7 +453,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <gazebo>
     <plugin name="gps_controller" filename="libhector_gazebo_ros_gps.so">
       <robotNamespace>$(arg robot_namespace)</robotNamespace>
-      <updateRate>1</updateRate>
+      <updateRate>10</updateRate>
       <bodyName>base_link</bodyName>
       <frameId>base_link</frameId>
       <topicName>navsat/fix</topicName>
@@ -465,6 +465,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
       <referenceHeading>90</referenceHeading>
       <referenceAltitude>0</referenceAltitude>
       <drift>0.0001 0.0001 0.0001</drift>
+      <gaussianNoise>0.3 0.3 0.3</gaussianNoise>
     </plugin>
   </gazebo>
 

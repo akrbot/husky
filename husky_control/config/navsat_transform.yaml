@@ -1,11 +1,9 @@
 frequency: 10.0
-broadcast_cartesian_transform: true        # publishes map->utm / map->odom TFs
-broadcast_cartesian_transform_as_parent_frame: true
+broadcast_cartesian_transform: false        # global EKF publishes map->odom TF instead
+broadcast_cartesian_transform_as_parent_frame: false
 publish_filtered_gps: true
-datum_lat: 17.509690
-datum_lon: 78.277281
-datum_alt: 0.0
-wait_for_datum: false                # true = wait for initial datum; false uses configured datum
+datum: [17.50969045486119, 78.27728104672221, 0.0]
+wait_for_datum: false
 use_odometry_yaw: true               # use odom yaw to help align GPS->map orientation
 yaw_offset: 0.0
 

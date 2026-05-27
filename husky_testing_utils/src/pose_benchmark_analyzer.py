@@ -27,11 +27,14 @@ def compute_metrics(data):
     methods = {
         'Odometry': ('odom_x', 'odom_y', 'odom_yaw'),
         'IMU DR': ('imu_x', 'imu_y', 'imu_yaw'),
-        'EKF': ('ekf_x', 'ekf_y', 'ekf_yaw'),
+        'EKF Local': ('ekf_x', 'ekf_y', 'ekf_yaw'),
+        'EKF Global': ('ekf_global_x', 'ekf_global_y', 'ekf_global_yaw'),
     }
 
     results = {}
     for name, (xk, yk, ywk) in methods.items():
+        if xk not in data.dtype.names:
+            continue
         mx, my, myaw = data[xk], data[yk], data[ywk]
         v = valid & ~np.isnan(mx)
 
@@ -78,9 +81,12 @@ def plot_trajectories(data, output_dir):
     styles = [
         ('odom_x', 'odom_y', 'b-', 'Odometry'),
         ('imu_x', 'imu_y', 'r-', 'IMU DR'),
-        ('ekf_x', 'ekf_y', 'g-', 'EKF'),
+        ('ekf_x', 'ekf_y', 'g-', 'EKF Local'),
+        ('ekf_global_x', 'ekf_global_y', 'm-', 'EKF Global'),
     ]
     for xk, yk, style, label in styles:
+        if xk not in data.dtype.names:
+            continue
         v = ~np.isnan(data[xk])
         if v.sum() > 0:
             ax.plot(data[xk][v], data[yk][v], style, linewidth=1, alpha=0.8, label=label)
@@ -106,9 +112,12 @@ def plot_position_error(data, output_dir):
     methods = [
         ('odom_x', 'odom_y', 'b', 'Odometry'),
         ('imu_x', 'imu_y', 'r', 'IMU DR'),
-        ('ekf_x', 'ekf_y', 'g', 'EKF'),
+        ('ekf_x', 'ekf_y', 'g', 'EKF Local'),
+        ('ekf_global_x', 'ekf_global_y', 'm', 'EKF Global'),
     ]
     for xk, yk, color, label in methods:
+        if xk not in data.dtype.names:
+            continue
         v = v_gt & ~np.isnan(data[xk])
         if v.sum() > 0:
             err = np.sqrt((data[xk][v] - gt_x[v])**2 + (data[yk][v] - gt_y[v])**2)
@@ -134,9 +143,12 @@ def plot_heading_error(data, output_dir):
     methods = [
         ('odom_yaw', 'b', 'Odometry'),
         ('imu_yaw', 'r', 'IMU DR'),
-        ('ekf_yaw', 'g', 'EKF'),
+        ('ekf_yaw', 'g', 'EKF Local'),
+        ('ekf_global_yaw', 'm', 'EKF Global'),
     ]
     for ywk, color, label in methods:
+        if ywk not in data.dtype.names:
+            continue
         v = v_gt & ~np.isnan(data[ywk])
         if v.sum() > 0:
             err = np.abs(angle_wrap(data[ywk][v] - gt_yaw[v]))
@@ -160,9 +172,10 @@ def plot_summary_bar(results, output_dir):
     x = np.arange(len(names))
     width = 0.35
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-    colors = ['#4285f4', '#ea4335', '#34a853']
+    all_colors = ['#4285f4', '#ea4335', '#34a853', '#ab47bc']
+    colors = all_colors[:len(names)]
     ax1.bar(x, pos_rmse, width, color=colors)
     ax1.set_ylabel('RMSE (m)')
     ax1.set_title('Position RMSE')
