@@ -1,0 +1,36 @@
+# IMU noise profiles for the Gazebo hector_gazebo_ros_imu plugin.
+#
+# Selected at launch via the `imu_profile` arg or the HUSKY_IMU_PROFILE env var:
+#   roslaunch husky_gazebo empty_world.launch imu_profile:=lowend
+#   HUSKY_IMU_PROFILE=highend ENABLE_EKF=true roslaunch husky_gazebo empty_world.launch
+#
+# Higher tier = better IMU = less noise. Values feed the plugin's
+# accel/rate/heading drift + Gaussian noise terms (see husky.urdf.xacro).
+#
+#   highend  ideal / tactical-grade    (least noise)
+#   mid      Xsens-class consumer MEMS
+#   lowend   BNO055-class low-cost MEMS (most noise)
+
+highend:
+  accel_noise: 0.005
+  accel_drift: 0.005
+  rate_noise: 0.005
+  rate_drift: 0.005
+  heading_noise: 0.005
+  heading_drift: 0.005
+
+mid:
+  accel_noise: 0.02
+  accel_drift: 0.01
+  rate_noise: 0.005
+  rate_drift: 0.002
+  heading_noise: 0.005
+  heading_drift: 0.005
+
+lowend:
+  accel_noise: 0.08
+  accel_drift: 0.04
+  rate_noise: 0.03
+  rate_drift: 0.015
+  heading_noise: 0.02
+  heading_drift: 0.02

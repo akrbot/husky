@@ -29,13 +29,13 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:arg name="imu_rpy"     default="$(optenv HUSKY_IMU_RPY 0 -1.5708 3.1416)"/>
   <xacro:arg name="imu_parent"  default="$(optenv HUSKY_IMU_PARENT base_link)"/>
 
-  <!-- IMU noise parameters (configurable via env vars for benchmarking) -->
-  <xacro:arg name="imu_accel_drift"     default="$(optenv HUSKY_IMU_ACCEL_DRIFT 0.005)"/>
-  <xacro:arg name="imu_accel_noise"     default="$(optenv HUSKY_IMU_ACCEL_NOISE 0.005)"/>
-  <xacro:arg name="imu_rate_drift"      default="$(optenv HUSKY_IMU_RATE_DRIFT 0.005)"/>
-  <xacro:arg name="imu_rate_noise"      default="$(optenv HUSKY_IMU_RATE_NOISE 0.005)"/>
-  <xacro:arg name="imu_heading_drift"   default="$(optenv HUSKY_IMU_HEADING_DRIFT 0.005)"/>
-  <xacro:arg name="imu_heading_noise"   default="$(optenv HUSKY_IMU_HEADING_NOISE 0.005)"/>
+  <!-- IMU noise profile (highend/mid/lowend) loaded from config/imu_profiles.yaml.
+       Select via `imu_profile:=<name>` launch arg or HUSKY_IMU_PROFILE env var. -->
+  <xacro:arg name="imu_profile" default="$(optenv HUSKY_IMU_PROFILE mid)"/>
+  <xacro:property name="imu_profile_name" value="$(arg imu_profile)"/>
+  <xacro:property name="imu_profiles_path" value="$(find husky_description)/config/imu_profiles.yaml"/>
+  <xacro:property name="imu_profiles" value="${xacro.load_yaml(imu_profiles_path)}"/>
+  <xacro:property name="imu_cfg" value="${imu_profiles[imu_profile_name]}"/>
 
   <!-- LMS1XX Laser Primary and Secondary -->
   <xacro:arg name="laser_enabled"           default="$(optenv HUSKY_LMS1XX_ENABLED 0)" />
@@ -441,12 +441,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
       <updateRate>50.0</updateRate>
       <bodyName>base_link</bodyName>
       <topicName>imu/data</topicName>
-      <accelDrift>$(arg imu_accel_drift) $(arg imu_accel_drift) $(arg imu_accel_drift)</accelDrift>
-      <accelGaussianNoise>$(arg imu_accel_noise) $(arg imu_accel_noise) $(arg imu_accel_noise)</accelGaussianNoise>
-      <rateDrift>$(arg imu_rate_drift) $(arg imu_rate_drift) $(arg imu_rate_drift)</rateDrift>
-      <rateGaussianNoise>$(arg imu_rate_noise) $(arg imu_rate_noise) $(arg imu_rate_noise)</rateGaussianNoise>
-      <headingDrift>$(arg imu_heading_drift)</headingDrift>
-      <headingGaussianNoise>$(arg imu_heading_noise)</headingGaussianNoise>
+      <accelDrift>${imu_cfg['accel_drift']} ${imu_cfg['accel_drift']} ${imu_cfg['accel_drift']}</accelDrift>
+      <accelGaussianNoise>${imu_cfg['accel_noise']} ${imu_cfg['accel_noise']} ${imu_cfg['accel_noise']}</accelGaussianNoise>
+      <rateDrift>${imu_cfg['rate_drift']} ${imu_cfg['rate_drift']} ${imu_cfg['rate_drift']}</rateDrift>
+      <rateGaussianNoise>${imu_cfg['rate_noise']} ${imu_cfg['rate_noise']} ${imu_cfg['rate_noise']}</rateGaussianNoise>
+      <headingDrift>${imu_cfg['heading_drift']}</headingDrift>
+      <headingGaussianNoise>${imu_cfg['heading_noise']}</headingGaussianNoise>
     </plugin>
   </gazebo>
 

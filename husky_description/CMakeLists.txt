@@ -11,6 +11,6 @@ if (CATKIN_ENABLE_TESTING)
 endif()
 
 install(
-  DIRECTORY launch meshes urdf
+  DIRECTORY config launch meshes urdf
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

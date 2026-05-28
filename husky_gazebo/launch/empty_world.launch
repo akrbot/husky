@@ -26,6 +26,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 <launch>
 
   <arg name="world_name" default="worlds/empty.world"/>
+  <arg name="imu_profile" default="$(optenv HUSKY_IMU_PROFILE mid)"/>
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(arg world_name)"/> <!-- world_name is wrt GAZEBO_RESOURCE_PATH environment variable -->
@@ -37,6 +38,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   </include>
 
   <include file="$(find husky_gazebo)/launch/spawn_husky.launch">
+    <arg name="imu_profile" value="$(arg imu_profile)"/>
   </include>
 
 </launch>

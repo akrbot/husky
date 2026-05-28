@@ -5,6 +5,7 @@
   <arg name="simulation" default="$(optenv ROBOT_SIMULATION true)"/>
   <arg name="robot_namespace" default="$(optenv ROBOT_NAMESPACE robot)"/>
   <arg name="enable_ekf" default="$(optenv ENABLE_EKF true)"/>
+  <arg name="imu_profile" default="$(optenv HUSKY_IMU_PROFILE mid)"/>
 
   <arg name="config_extras"
        default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
@@ -19,6 +20,7 @@
   <!-- Load robot description -->
   <include file="$(find husky_description)/launch/description.launch" >
     <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    <arg name="imu_profile" value="$(arg imu_profile)"/>
   </include>
 
   <!-- Load controller configuration -->
