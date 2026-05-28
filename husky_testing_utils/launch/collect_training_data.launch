@@ -1,0 +1,72 @@
+<!-- collect_training_data.launch
+     ==============================
+     Starts the IMU dead-reckoning node (needed for imu_x/imu_y estimates)
+     and the training data collector.
+
+     Usage examples
+     ==============
+
+     Clean run (highend IMU, no faults):
+       ENABLE_EKF=true roslaunch husky_testing_utils collect_training_data.launch \
+           fault_label:=clean
+
+     IMU fault run (lowend IMU profile):
+       HUSKY_IMU_PROFILE=lowend ENABLE_EKF=true \
+       roslaunch husky_testing_utils collect_training_data.launch \
+           fault_label:=imu_lowend
+
+     Odom fault run (run the odom_fault_injector separately, then):
+       ENABLE_EKF=true roslaunch husky_testing_utils collect_training_data.launch \
+           fault_label:=odom_slip
+
+     IMPORTANT: Launch Gazebo + the robot FIRST in a separate terminal:
+       roslaunch husky_gazebo empty_world.launch
+
+     Then launch this file in a second terminal.
+     Drive with keyboard in a third terminal.
+     Ctrl+C here to stop recording.
+-->
+<launch>
+
+  <!-- ── Parameters ──────────────────────────────────────────────────────── -->
+
+  <!-- Tag written into every row of the CSV.
+       Suggested values: clean | imu_lowend | imu_highend | odom_slip | odom_bias -->
+  <arg name="fault_label"  default="clean"/>
+
+  <!-- Where to save the CSV (defaults to husky_testing_utils/results/) -->
+  <arg name="output_dir"
+       default="$(find husky_testing_utils)/results"/>
+
+  <!-- Recording rate in Hz — keep at 50 to match sensor topics -->
+  <arg name="sample_rate"  default="50.0"/>
+
+  <!-- ── IMU dead-reckoning node ─────────────────────────────────────────── -->
+  <!--
+    This is the same node used by pose_benchmark.launch.
+    It listens to /imu/data and publishes /imu_only/odom (position estimate).
+    Required because the collector needs imu_x / imu_y for label generation.
+    The turnon_bias values should MATCH the imu_profile you launched Gazebo with.
+    Update benchmark.yaml before each session:
+      clean / imu_highend  →  turnon_bias_accel: 0.01, turnon_bias_gyro: 0.005
+      imu_lowend           →  turnon_bias_accel: 0.03, turnon_bias_gyro: 0.015
+  -->
+  <node name="imu_dead_reckoning"
+        pkg="husky_testing_utils"
+        type="imu_dead_reckoning_node.py"
+        output="screen">
+    <rosparam command="load"
+              file="$(find husky_testing_utils)/config/benchmark.yaml"/>
+  </node>
+
+  <!-- ── Training data collector ─────────────────────────────────────────── -->
+  <node name="training_data_collector"
+        pkg="husky_testing_utils"
+        type="training_data_collector_node.py"
+        output="screen">
+    <param name="fault_label"  value="$(arg fault_label)"/>
+    <param name="output_dir"   value="$(arg output_dir)"/>
+    <param name="sample_rate"  value="$(arg sample_rate)"/>
+  </node>
+
+</launch>

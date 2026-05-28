@@ -1,8 +1,11 @@
-# Husky Simulation - Pure Pursuit Algorithm Testing
+# Husky Simulation — Localization Benchmarking & Pure Pursuit Testbed
 
 Simulation environment built on top of the [Clearpath Husky](https://github.com/husky/husky) robot platform. The Husky model is used purely as a simulation testbed — it provides a well-tuned differential-drive robot with realistic physics properties (mass, inertia, friction, sensor noise) so we can focus on developing and validating our own algorithms rather than modelling a robot from scratch.
 
-The primary algorithm under test is a **Pure Pursuit GPS-based path-following controller** that uses dual-GPS antenna pose estimation.
+The project hosts two workflows:
+
+- **Pose-estimation / sensor-fusion benchmarking (current focus)** — compares wheel odometry, IMU dead reckoning, and a dual EKF (local odom-frame + global map-frame) against Gazebo ground truth, with selectable IMU noise profiles. This is the foundation for the ongoing adaptive sensor-fusion research.
+- **Pure Pursuit GPS path-following controller** — a path follower driven by a GPS-derived pose. Note: it was written for a *dual-GPS antenna* setup; the current simulation publishes a *single* GPS (`/navsat/fix`), so the pure_pursuit GPS pipeline needs remapping or the dual antennas re-enabled to run (see the pure_pursuit section).
 
 ## Tested Environment
 
@@ -61,9 +64,13 @@ husky/
 | Velodyne VLP-16 LiDAR | backpack_link (offset z=0.26m) | `/points` (PointCloud2) |
 | Intel RealSense D435 | base_link (x=0.385, z=0.316) | `/realsense/...` |
 | IMU (simulated) | base_link | `/imu/data` (50 Hz) |
-| Dual GPS antennas | base_link (left: y=+0.35, right: y=-0.35) | `/sensors/gps_1/fix`, `/sensors/gps_2/fix` (10 Hz) |
+| GPS (simulated) | base_link | `/navsat/fix`, `/navsat/vel` (10 Hz) |
 
 **GPS reference datum:** lat=17.50969, lon=78.27728 (Hyderabad area)
+
+> **Note:** The robot now carries a **single** GPS receiver at `base_link` (publishing `/navsat/fix`). The earlier dual GNSS antennas (`gps_left`/`gps_right` → `/sensors/gps_1/fix`, `/sensors/gps_2/fix`) have been removed — the `gnss_antenna` macro is commented out in `husky.urdf.xacro`.
+
+**IMU noise profiles:** Gazebo IMU plugin noise is selected at launch by a named profile in `husky_description/config/imu_profiles.yaml` (`highend` / `mid` / `lowend`; higher tier = less noise). Pick one with the `imu_profile` launch arg or the `HUSKY_IMU_PROFILE` env var, e.g. `imu_profile:=lowend`. Default is `mid`.
 
 **Sensors available but disabled:**
 - SICK LMS1XX 2D LiDAR (set `HUSKY_LMS1XX_ENABLED=1`)
@@ -72,11 +79,12 @@ husky/
 - Secondary Velodyne/RealSense (set respective `_SECONDARY_ENABLED=1`)
 
 **Key files:**
-- `urdf/husky.urdf.xacro` — Main robot definition, sensor configuration, Gazebo plugins
+- `urdf/husky.urdf.xacro` — Main robot definition, sensor configuration, Gazebo plugins (IMU, single GPS)
 - `urdf/wheel.urdf.xacro` — Wheel geometry, inertia, friction (mu1=mu2=1.0)
 - `urdf/accessories/vlp16_mount.urdf.xacro` — Velodyne mount macro
-- `urdf/accessories/gnss_antenna.urdf.xacro` — GPS antenna mount macro
-- `launch/description.launch` — Loads the robot_description parameter via xacro
+- `urdf/accessories/gnss_antenna.urdf.xacro` — Dual GPS antenna mount macro (currently disabled in the URDF)
+- `config/imu_profiles.yaml` — IMU noise profiles (`highend`/`mid`/`lowend`) loaded by the URDF
+- `launch/description.launch` — Loads the `robot_description` parameter via xacro (forwards `imu_profile`)
 
 ---
 
@@ -88,18 +96,22 @@ husky/
 
 | Launch command | World |
 |----------------|-------|
-| `roslaunch husky_gazebo husky_custom_world.launch launch_type:=agriculture` | Agricultural field |
-| `roslaunch husky_gazebo husky_custom_world.launch launch_type:=barrels` | Barrel obstacles (default) |
-| `roslaunch husky_gazebo empty_world.launch` | Empty flat ground |
-| `roslaunch husky_gazebo playpen.launch` | Clearpath enclosed playpen |
+| `roslaunch husky_gazebo husky_custom_world.launch launch_type:=agriculture` | Agricultural field (`agriculture.world`) |
+| `roslaunch husky_gazebo husky_custom_world.launch launch_type:=barrels` | Barrel obstacles (default, `barrels.world`) |
+| `roslaunch husky_gazebo empty_world.launch` | Empty flat ground (`empty.world`) |
+| `roslaunch husky_gazebo playpen.launch` | Clearpath enclosed playpen (`clearpath_playpen.world`) |
+
+Other world assets present: `worlds/waypoint.world`. Additional launch helpers: `husky_playpen.launch`, `multi_husky_playpen.launch`, `realsense.launch`.
 
 **What `spawn_husky.launch` does (called internally):**
-1. Includes `husky_control/control.launch` (loads robot description + spawns controllers)
+1. Includes `husky_control/control.launch` (loads robot description + spawns controllers + localization)
 2. Includes `husky_control/teleop.launch` (keyboard/joystick control)
-3. Spawns the Husky URDF model into Gazebo at position (x, y, z, yaw) — all default to 0
-4. Starts `gps_joint_state_publisher` for the GPS antenna joints
+3. Optionally includes `realsense.launch` (if `HUSKY_REALSENSE_ENABLED=1`)
+4. Spawns the Husky URDF model into Gazebo at position (x, y, z, yaw) — all default to 0
 
 **Spawn position args:** You can override with `x:=5.0 y:=3.0 yaw:=1.57`
+
+**IMU profile passthrough:** `empty_world.launch` → `spawn_husky.launch` → `control.launch` → `description.launch` all forward the `imu_profile` arg (defaulting from `HUSKY_IMU_PROFILE`), so `roslaunch husky_gazebo empty_world.launch imu_profile:=highend` reaches the URDF.
 
 **Key files:**
 - `launch/husky_custom_world.launch` — Entry point, selects world by `launch_type` arg
@@ -110,15 +122,20 @@ husky/
 
 ### husky_control
 
-**What it does:** Configures and launches all the controllers that make the robot move. Handles the diff-drive controller, velocity multiplexing (twist_mux), teleop input, and optional EKF localization.
+**What it does:** Configures and launches all the controllers that make the robot move. Handles the diff-drive controller, velocity multiplexing (twist_mux), teleop input, and the dual EKF localization stack.
 
 **Launch chain:**
 ```
 control.launch
-  ├── Loads husky_description (robot model)
+  ├── Loads husky_description (robot model, forwards imu_profile)
   ├── Spawns husky_velocity_controller (diff-drive)
   ├── Spawns husky_joint_publisher (joint states)
-  ├── Publishes ground truth TF: world -> base_link (if EKF disabled)
+  ├── If ENABLE_EKF=true (default):
+  │     ├── ekf_localization_local  (odom frame: wheel odom + IMU -> /odometry/filtered)
+  │     ├── ekf_localization_global (map frame: wheel odom + IMU + GPS -> /odometry/filtered_map)
+  │     └── gps_to_odom_node.py     (/navsat/fix -> /odometry/gps for the global EKF)
+  ├── Else (ENABLE_EKF=false):
+  │     └── truth_tf_world_to_base_link_pub.py (ground truth TF: world -> base_link)
   ├── robot_state_publisher (URDF TF tree)
   ├── interactive_marker_twist_server (RViz drag control)
   └── twist_mux (velocity priority arbitration)
@@ -150,28 +167,37 @@ The pure_pursuit node publishes to `husky/cmd_vel` (priority 1), so joystick/key
 - Wheel separation multiplier: 1.875
 - Odometry TF: disabled (uses ground truth or EKF instead)
 
-**EKF localization (disabled by default, set `ENABLE_EKF=true`):**
-- Fuses wheel odometry + IMU
-- 2D mode, 50 Hz
-- NavSat transform for GPS->odom frame conversion
+**Localization — dual EKF (enabled by default; set `ENABLE_EKF=false` for ground-truth mode):**
 
-**Ground truth mode (default):**
+Two `robot_localization` EKF instances run together, both in 2D mode at 50 Hz:
+
+- **Local EKF** (`ekf_localization_local`, `localization_local.yaml`) — `world_frame=odom`. Fuses wheel odometry + IMU. Publishes `/odometry/filtered` and the `odom -> base_link` TF.
+- **Global EKF** (`ekf_localization_global`, `localization_global.yaml`) — `world_frame=map`. Fuses wheel odometry + IMU + GPS. Publishes `/odometry/filtered_map` (remapped from `odometry/filtered`) and the `map -> odom` TF.
+- **gps_to_odom** (`gps_to_odom_node.py`) — converts `/navsat/fix` (lat/lon) to `/odometry/gps` (x,y in the `map` frame) via a flat-Earth approximation, independent of odom/IMU. Feeds the global EKF as `odom1`. Reference datum is passed as `ref_lat`/`ref_lon` node params.
+
+> The EKF replaces the older single-EKF + `navsat_transform_node` design. `config/localization.yaml` and `config/navsat_transform.yaml` remain in the tree but are **legacy / unused** — `control.launch` no longer references them.
+
+**Ground-truth mode (set `ENABLE_EKF=false`):**
 - `truth_tf_world_to_base_link_pub.py` subscribes to `/gazebo/model_states`
 - Publishes TF: `world -> base_link` at 50 Hz directly from Gazebo's ground truth
 
 **Key files:**
 - `config/control.yaml` — Diff-drive controller parameters
 - `config/twist_mux.yaml` — Velocity priority configuration
-- `config/localization.yaml` — EKF parameters (when enabled)
-- `config/navsat_transform.yaml` — GPS transform config (reference datum)
+- `config/localization_local.yaml` — Local EKF parameters (odom frame: odom + IMU)
+- `config/localization_global.yaml` — Global EKF parameters (map frame: odom + IMU + GPS)
 - `config/teleop_ps4.yaml` / `teleop_logitech.yaml` — Gamepad mappings
-- `src/truth_tf_world_to_base_link_pub.py` — Gazebo ground truth TF publisher
+- `src/gps_to_odom_node.py` — Converts `/navsat/fix` to `/odometry/gps` for the global EKF
+- `src/truth_tf_world_to_base_link_pub.py` — Gazebo ground truth TF publisher (ground-truth mode)
+- `config/localization.yaml`, `config/navsat_transform.yaml` — legacy single-EKF configs, no longer referenced
 
 ---
 
 ### pure_pursuit
 
 **What it does:** Our custom pure pursuit path-following controller. Takes a GPS-derived robot pose and a predefined path, then computes velocity commands to follow the path.
+
+> **Heads-up (GPS topic mismatch):** This pipeline was built for a dual-GPS antenna robot. `config/config.yaml` subscribes to `/sensors/gps_1/fix` and `/sensors/gps_2/fix`, but the current single-GPS simulation only publishes `/navsat/fix`. To run pure_pursuit as-is you must either remap/point the dual-GPS pose node at available topics, or re-enable the `gnss_antenna` macro in `husky.urdf.xacro`.
 
 **Architecture:**
 ```
@@ -243,6 +269,7 @@ pose:
 - `rviz/pure_pursuit.rviz` — RViz visualization for debugging
 - `launch/pure_pursuit.launch` — Starts path publisher + controller
 - `launch/dual_gps_pose.launch` — Starts dual GPS pose node
+- `launch/hhgps_husky.launch`, `launch/record_path_tester.launch` — Additional GPS/path-recording helpers
 
 ---
 
@@ -295,7 +322,7 @@ pose:
 │ /imu/data    │   │  - Ground truth      │   │  - Position RMSE       │
 │     ↓        │   │  - Wheel odometry    │   │  - Heading RMSE        │
 │ /imu_only/   │   │  - IMU dead reckoning│   │  - Drift rate          │
-│   odom       │   │  - EKF fused         │   │  - Trajectory plots    │
+│   odom       │   │  - EKF local+global  │   │  - Trajectory plots    │
 └──────────────┘   └──────────────────────┘   └────────────────────────┘
 ```
 
@@ -308,30 +335,34 @@ pose:
    - Publishes: `/imu_only/odom` (Odometry)
 
 2. **pose_benchmark_recorder_node.py** — Multi-source data collection
-   - Simultaneously records ground truth, wheel odometry, IMU dead reckoning, and EKF estimates
-   - Outputs timestamped CSV with 13 columns: `timestamp, gt_x, gt_y, gt_yaw, odom_x, odom_y, odom_yaw, imu_x, imu_y, imu_yaw, ekf_x, ekf_y, ekf_yaw`
+   - Simultaneously records ground truth, wheel odometry, IMU dead reckoning, the local EKF, and the global EKF
+   - Outputs a timestamped CSV with **16 columns**: `timestamp, gt_x, gt_y, gt_yaw, odom_x, odom_y, odom_yaw, imu_x, imu_y, imu_yaw, ekf_x, ekf_y, ekf_yaw, ekf_global_x, ekf_global_y, ekf_global_yaw`
+   - `ekf_*` = local EKF (`/odometry/filtered`); `ekf_global_*` = global EKF (`/odometry/filtered_map`)
    - Configurable sample rate (default 50 Hz) and duration (default: until Ctrl+C)
    - Results saved to `results/benchmark_YYYYMMDD_HHMMSS.csv`
 
 3. **pose_benchmark_analyzer.py** — Offline analysis and visualization
-   - Computes per-method metrics: position RMSE, heading RMSE, max errors, drift rate (m/m)
+   - Computes per-method metrics (Odometry, IMU dead reckoning, EKF local, EKF Global): position RMSE, heading RMSE, max errors, drift rate (m/m)
    - Generates plots: `trajectory_comparison.png`, `position_error.png`, `heading_error.png`, `rmse_summary.png`
    - Usage: `python3 pose_benchmark_analyzer.py [--input <csv>] [--output <dir>]`
    - Auto-detects latest CSV in `results/` if no input specified
 
 4. **gps_pub_wh.py** — WGS84 geodesic dual-GPS publisher
    - Similar to `dualGPS_robot_pose_pub.py` in pure_pursuit but uses geodesic math (WGS84 ellipsoid) instead of flat-earth approximation
+   - Subscribes to `/sensors/gps_1/fix`, `/sensors/gps_2/fix` (dual-GPS — **legacy** w.r.t. the current single-GPS sim, which publishes `/navsat/fix`)
    - Publishes: `/rover_mid/fix` (NavSatFix), `/heading` (Float64)
 
-**IMU noise presets (environment variables set before launching simulation):**
+**IMU noise profiles:**
 
-| Preset | ACCEL_NOISE | ACCEL_DRIFT | RATE_NOISE | RATE_DRIFT | HEADING_DRIFT | HEADING_NOISE | turnon_accel | turnon_gyro |
-|--------|-------------|-------------|------------|------------|---------------|---------------|--------------|-------------|
-| ideal | 0.005 | 0.005 | 0.005 | 0.005 | 0.005 | 0.005 | 0.0 | 0.0 |
-| mid (Xsens) | 0.02 | 0.01 | 0.005 | 0.002 | 0.005 | 0.005 | 0.01 | 0.005 |
-| low (BNO055) | 0.08 | 0.04 | 0.03 | 0.015 | 0.02 | 0.02 | 0.03 | 0.015 |
+Gazebo IMU plugin noise is selected by a named profile in `husky_description/config/imu_profiles.yaml`, chosen via the `imu_profile` launch arg or the `HUSKY_IMU_PROFILE` env var (higher tier = better IMU = less noise). Default is `mid`.
 
-The Gazebo IMU plugin noise is configured via `HUSKY_IMU_*` environment variables in the URDF (set before `roslaunch`). The turn-on bias values are applied in the dead reckoning node via `config/benchmark.yaml`.
+| Profile | accel_noise | accel_drift | rate_noise | rate_drift | heading_noise | heading_drift | turnon_accel | turnon_gyro |
+|---------|-------------|-------------|------------|------------|---------------|---------------|--------------|-------------|
+| highend | 0.005 | 0.005 | 0.005 | 0.005 | 0.005 | 0.005 | 0.0 | 0.0 |
+| mid | 0.02 | 0.01 | 0.005 | 0.002 | 0.005 | 0.005 | 0.01 | 0.005 |
+| lowend | 0.08 | 0.04 | 0.03 | 0.015 | 0.02 | 0.02 | 0.03 | 0.015 |
+
+The `accel_*`/`rate_*`/`heading_*` columns are the Gazebo plugin noise (set by `imu_profiles.yaml`). The `turnon_*` columns are the dead-reckoning node's turn-on bias (`turnon_bias_accel`/`turnon_bias_gyro` in `config/benchmark.yaml`) — set these manually to match the chosen profile.
 
 **Configuration (config/benchmark.yaml):**
 ```yaml
@@ -413,6 +444,8 @@ roslaunch husky_gazebo husky_custom_world.launch launch_type:=agriculture
 
 ### 5. Run Pure Pursuit
 
+> **Prerequisite:** The dual-GPS pose node expects `/sensors/gps_1/fix` + `/sensors/gps_2/fix`. The current single-GPS sim publishes only `/navsat/fix`, so remap the pose node's topics or re-enable the `gnss_antenna` macro in `husky.urdf.xacro` before running this pipeline.
+
 ```bash
 # Terminal 2: Start dual-GPS pose estimation
 roslaunch pure_pursuit dual_gps_pose.launch
@@ -452,18 +485,20 @@ Drive the robot around, then press Ctrl+C in Terminal 2 to stop recording. Analy
 python3 $(rospack find husky_testing_utils)/src/pose_benchmark_analyzer.py
 ```
 
-**With a specific IMU noise preset (e.g. low-cost BNO055):**
+**With a specific IMU noise profile (e.g. low-cost `lowend`):**
 
 ```bash
-# Terminal 1: Launch with low-cost IMU noise
-HUSKY_IMU_ACCEL_NOISE=0.08 HUSKY_IMU_ACCEL_DRIFT=0.04 \
-HUSKY_IMU_RATE_NOISE=0.03 HUSKY_IMU_RATE_DRIFT=0.015 \
-HUSKY_IMU_HEADING_DRIFT=0.02 HUSKY_IMU_HEADING_NOISE=0.02 \
-ENABLE_EKF=true roslaunch husky_gazebo empty_world.launch
+# Terminal 1: Launch with the lowend IMU profile (env-var style)
+HUSKY_IMU_PROFILE=lowend ENABLE_EKF=true roslaunch husky_gazebo empty_world.launch
 
-# Terminal 2: Launch benchmark (update turnon_bias in benchmark.yaml to match preset)
+# ...or as a launch arg:
+# roslaunch husky_gazebo empty_world.launch imu_profile:=lowend
+
+# Terminal 2: Launch benchmark (update turnon_bias in benchmark.yaml to match the profile)
 roslaunch husky_testing_utils pose_benchmark.launch
 ```
+
+Available profiles: `highend`, `mid` (default), `lowend` — defined in `husky_description/config/imu_profiles.yaml`.
 
 ### 7. Visualize in RViz (optional)
 
@@ -481,15 +516,16 @@ rviz -d $(rospack find pure_pursuit)/rviz/pure_pursuit.rviz
 |-------|------|--------|-------------|
 | `/gazebo/model_states` | ModelStates | Gazebo | Ground truth poses of all models |
 | `/imu/data` | Imu | hector_gazebo_ros_imu | Simulated IMU (50 Hz) |
-| `/sensors/gps_1/fix` | NavSatFix | hector_gazebo_ros_gps | Left GPS antenna (10 Hz) |
-| `/sensors/gps_2/fix` | NavSatFix | hector_gazebo_ros_gps | Right GPS antenna (10 Hz) |
-| `/navsat/vel` | TwistStamped | hector_gazebo_ros_gps | GPS velocity |
+| `/navsat/fix` | NavSatFix | hector_gazebo_ros_gps | Single GPS receiver at base_link (10 Hz) |
+| `/navsat/vel` | Vector3Stamped | hector_gazebo_ros_gps | GPS velocity |
 | `/points` | PointCloud2 | velodyne_gazebo_plugin | VLP-16 point cloud |
 | `/joint_states` | JointState | controller_manager | Wheel joint positions/velocities |
 | `/husky_velocity_controller/odom` | Odometry | diff_drive_controller | Wheel odometry |
 | `/tf` | TFMessage | robot_state_publisher + others | Full TF tree |
 
 ### Pure pursuit pipeline
+
+> Legacy dual-GPS topics — the dual-GPS pose node expects `/sensors/gps_1/fix` + `/sensors/gps_2/fix`, which the current single-GPS sim does not publish (see the pure_pursuit section).
 
 | Topic | Type | Source | Description |
 |-------|------|--------|-------------|
@@ -504,7 +540,9 @@ rviz -d $(rospack find pure_pursuit)/rviz/pure_pursuit.rviz
 | Topic | Type | Source | Description |
 |-------|------|--------|-------------|
 | `/imu_only/odom` | Odometry | imu_dead_reckoning_node | IMU-only dead reckoning pose estimate |
-| `/odometry/filtered` | Odometry | robot_localization (EKF) | Fused wheel odom + IMU estimate |
+| `/odometry/gps` | Odometry | gps_to_odom_node | GPS lat/lon converted to x,y in map frame |
+| `/odometry/filtered` | Odometry | ekf_localization_local | Local EKF: wheel odom + IMU (odom frame) |
+| `/odometry/filtered_map` | Odometry | ekf_localization_global | Global EKF: wheel odom + IMU + GPS (map frame) |
 
 ### Control (twist_mux inputs -> output)
 
@@ -520,22 +558,27 @@ rviz -d $(rospack find pure_pursuit)/rviz/pure_pursuit.rviz
 
 ## TF Tree
 
+The world-frame chain depends on the localization mode:
+
+- **EKF mode (default, `ENABLE_EKF=true`):** `map → odom → base_link`
+  - global EKF publishes `map → odom`, local EKF publishes `odom → base_link`
+- **Ground-truth mode (`ENABLE_EKF=false`):** `world → base_link` (from Gazebo ground truth)
+
 ```
-world
-  └── base_link                      (ground truth from Gazebo, or EKF)
-        ├── base_footprint
-        ├── inertial_link
-        ├── imu_link
-        ├── front_left_wheel_link
-        ├── front_right_wheel_link
-        ├── rear_left_wheel_link
-        ├── rear_right_wheel_link
-        ├── top_plate_link
-        │     └── backpack_link
-        │           └── velodyne
-        ├── realsense_camera_link
-        │     └── realsense_camera_depth_frame
-        │           └── realsense_camera_depth_optical_frame
-        ├── gps_left_link
-        └── gps_right_link
+map  (EKF mode)              world  (ground-truth mode)
+  └── odom                     └── base_link
+        └── base_link
+              ├── base_footprint
+              ├── inertial_link
+              ├── imu_link
+              ├── front_left_wheel_link
+              ├── front_right_wheel_link
+              ├── rear_left_wheel_link
+              ├── rear_right_wheel_link
+              ├── top_plate_link
+              │     └── backpack_link
+              │           └── velodyne
+              └── realsense_camera_link
+                    └── realsense_camera_depth_frame
+                          └── realsense_camera_depth_optical_frame
 ```
