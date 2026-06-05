@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!-- Live XY comparison: wheel odom vs. EKF vs. Gazebo ground truth. -->
+<launch>
+  <arg name="ekf_topic"  default="/odometry/filtered"/>
+  <arg name="odom_topic" default="/husky_velocity_controller/odom"/>
+  <arg name="gt_topic"   default="/gazebo/model_states"/>
+  <arg name="robot_name" default="husky"/>
+  <arg name="size"       default="10.0"/>
+  <arg name="rate"       default="30.0"/>
+
+  <node pkg="x100_control" type="odom_ekf_plotter.py" name="odom_ekf_plotter" output="screen">
+    <param name="ekf_topic"  value="$(arg ekf_topic)"/>
+    <param name="odom_topic" value="$(arg odom_topic)"/>
+    <param name="gt_topic"   value="$(arg gt_topic)"/>
+    <param name="robot_name" value="$(arg robot_name)"/>
+    <param name="size"       value="$(arg size)"/>
+    <param name="rate"       value="$(arg rate)"/>
+  </node>
+</launch>
